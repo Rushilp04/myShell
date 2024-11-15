@@ -21,14 +21,21 @@ void execute_command(char *cmd);
 void change_directory(char **args);
 void print_working_directory();
 char **tokenize_input(char *input, int *token_count);
+void free_tokens(char **tokens, int token_count);
+void run_tests();
 
 int main(int argc, char *argv[]) {
+    if (argc == 2 && strcmp(argv[1], "--test") == 0) {
+        run_tests();
+        return 0;
+    }
+
     char cmd[MAX_CMD_LEN];
     FILE *input = stdin;
     int interactive = isatty(fileno(stdin));
 
     if (argc > 2) {
-        fprintf(stderr, "Usage: %s [batch_file]\n", argv[0]);
+        fprintf(stderr, "Usage: %s [batch_file] or %s --test\n", argv[0], argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -72,43 +79,7 @@ int main(int argc, char *argv[]) {
             printf("Token %d: %s\n", i, tokens[i]);
         }
 
-        free(tokens);
-
-        //Lines 78-109 are to make sure the Tokenizer works properly (gonna leave them for now)
-        if (interactive) {
-        printf("Testing specific commands...\n");
-
-        // Test case 1: Simple command
-        char test_cmd1[] = "ls -l /home/user";
-        int token_count1;
-        char **tokens1 = tokenize_input(test_cmd1, &token_count1);
-        printf("Test command 1: %s\n", test_cmd1);
-        for (int i = 0; i < token_count1; i++) {
-            printf("Token %d: %s\n", i, tokens1[i]);
-        }
-        free(tokens1);
-
-        // Test case 2: Command with special characters
-        char test_cmd2[] = "cat file.txt | grep hello";
-        int token_count2;
-        char **tokens2 = tokenize_input(test_cmd2, &token_count2);
-        printf("Test command 2: %s\n", test_cmd2);
-        for (int i = 0; i < token_count2; i++) {
-            printf("Token %d: %s\n", i, tokens2[i]);
-        }
-        free(tokens2);
-
-        // Test case 3: Command with multiple spaces
-        char test_cmd3[] = "   echo    hello   world  ";
-        int token_count3;
-        char **tokens3 = tokenize_input(test_cmd3, &token_count3);
-        printf("Test command 3: %s\n", test_cmd3);
-        for (int i = 0; i < token_count3; i++) {
-            printf("Token %d: %s\n", i, tokens3[i]);
-        }
-        free(tokens3);
-}
-
+        free_tokens(tokens, token_count);
     }
 
     if (argc == 2) {
@@ -116,6 +87,32 @@ int main(int argc, char *argv[]) {
     }
 
     return 0;
+}
+// to test the code type "./mysh --test" afer building executable
+void run_tests() {
+    char *test_cases[] = {
+        "ls -l /home/user",
+        "cat file.txt | grep hello",
+        "   echo    hello   world  ",
+        "cd /tmp",
+        "pwd",
+        "echo \"This is a test\"",
+        NULL
+    };
+
+    for (int i = 0; test_cases[i] != NULL; i++) {
+        printf("\nTest Case %d: %s\n", i + 1, test_cases[i]);
+        int token_count;
+        char *test_input = strdup(test_cases[i]);
+        char **tokens = tokenize_input(test_input, &token_count);
+
+        for (int j = 0; j < token_count; j++) {
+            printf("Token %d: %s\n", j, tokens[j]);
+        }
+
+        free(test_input);
+        free_tokens(tokens, token_count);
+    }
 }
 
 char **tokenize_input(char *input, int *token_count) {
@@ -135,6 +132,13 @@ char **tokenize_input(char *input, int *token_count) {
     *token_count = count;
 
     return tokens;
+}
+
+void free_tokens(char **tokens, int token_count) {
+    for (int i = 0; i < token_count; i++) {
+        free(tokens[i]);
+    }
+    free(tokens);
 }
 
 void execute_command(char *cmd) {
