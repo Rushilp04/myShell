@@ -7,35 +7,40 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <errno.h>
+#include <glob.h>
 
 #define MAX_CMD_LEN 1024
 #define MAX_ARGS 100
 #define MAX_TOKENS 100
+
+typedef struct {
+    char **arguments;
+    char *execpath;
+    char *inputfile;
+    char *outputfile;
+    int arg_count;
+} command_t;
 
 void print_prompt() {
     printf("mysh> ");
     fflush(stdout);
 }
 
-void execute_command(char *cmd);
+void execute_command(command_t *cmd);
 void change_directory(char **args);
 void print_working_directory();
 char **tokenize_input(char *input, int *token_count);
 void free_tokens(char **tokens, int token_count);
-void run_tests();
+command_t *parse_command(char **tokens, int token_count);
+void free_command(command_t *cmd);
 
 int main(int argc, char *argv[]) {
-    if (argc == 2 && strcmp(argv[1], "--test") == 0) {
-        run_tests();
-        return 0;
-    }
-
     char cmd[MAX_CMD_LEN];
     FILE *input = stdin;
     int interactive = isatty(fileno(stdin));
 
     if (argc > 2) {
-        fprintf(stderr, "Usage: %s [batch_file] or %s --test\n", argv[0], argv[0]);
+        fprintf(stderr, "Usage: %s [batch_file]\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
@@ -73,10 +78,11 @@ int main(int argc, char *argv[]) {
 
         int token_count;
         char **tokens = tokenize_input(cmd, &token_count);
+        command_t *parsed_command = parse_command(tokens, token_count);
 
-        // Debug: Print tokens
-        for (int i = 0; i < token_count; i++) {
-            printf("Token %d: %s\n", i, tokens[i]);
+        if (parsed_command != NULL) {
+            execute_command(parsed_command);
+            free_command(parsed_command);
         }
 
         free_tokens(tokens, token_count);
@@ -87,32 +93,6 @@ int main(int argc, char *argv[]) {
     }
 
     return 0;
-}
-// to test the code type "./mysh --test" afer building executable
-void run_tests() {
-    char *test_cases[] = {
-        "ls -l /home/user",
-        "cat file.txt | grep hello",
-        "   echo    hello   world  ",
-        "cd /tmp",
-        "pwd",
-        "echo \"This is a test\"",
-        NULL
-    };
-
-    for (int i = 0; test_cases[i] != NULL; i++) {
-        printf("\nTest Case %d: %s\n", i + 1, test_cases[i]);
-        int token_count;
-        char *test_input = strdup(test_cases[i]);
-        char **tokens = tokenize_input(test_input, &token_count);
-
-        for (int j = 0; j < token_count; j++) {
-            printf("Token %d: %s\n", j, tokens[j]);
-        }
-
-        free(test_input);
-        free_tokens(tokens, token_count);
-    }
 }
 
 char **tokenize_input(char *input, int *token_count) {
@@ -141,29 +121,88 @@ void free_tokens(char **tokens, int token_count) {
     free(tokens);
 }
 
-void execute_command(char *cmd) {
-    char *args[MAX_ARGS];
-    int i = 0;
-    char *token = strtok(cmd, " ");
-
-    while (token != NULL && i < MAX_ARGS - 1) {
-        args[i++] = token;
-        token = strtok(NULL, " ");
+command_t *parse_command(char **tokens, int token_count) {
+    command_t *cmd = malloc(sizeof(command_t));
+    if (!cmd) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
     }
-    args[i] = NULL;
 
-    if (args[0] == NULL) {
+    cmd->arguments = malloc(MAX_ARGS * sizeof(char *));
+    cmd->execpath = NULL;
+    cmd->inputfile = NULL;
+    cmd->outputfile = NULL;
+    cmd->arg_count = 0;
+
+    int i = 0;
+    while (i < token_count) {
+        if (strcmp(tokens[i], "<") == 0) {
+            if (i + 1 < token_count) {
+                cmd->inputfile = strdup(tokens[i + 1]);
+                i += 2;
+            } else {
+                fprintf(stderr, "Syntax error: expected file after '<'\n");
+                free_command(cmd);
+                return NULL;
+            }
+        } else if (strcmp(tokens[i], ">") == 0) {
+            if (i + 1 < token_count) {
+                cmd->outputfile = strdup(tokens[i + 1]);
+                i += 2;
+            } else {
+                fprintf(stderr, "Syntax error: expected file after '>'\n");
+                free_command(cmd);
+                return NULL;
+            }
+        } else {
+            // Handle wildcard expansion
+            glob_t globbuf;
+            if (strchr(tokens[i], '*')) {
+                if (glob(tokens[i], 0, NULL, &globbuf) == 0) {
+                    for (size_t j = 0; j < globbuf.gl_pathc; j++) {
+                        cmd->arguments[cmd->arg_count++] = strdup(globbuf.gl_pathv[j]);
+                    }
+                } else {
+                    cmd->arguments[cmd->arg_count++] = strdup(tokens[i]);
+                }
+                globfree(&globbuf);
+            } else {
+                cmd->arguments[cmd->arg_count++] = strdup(tokens[i]);
+            }
+            i++;
+        }
+    }
+
+    cmd->arguments[cmd->arg_count] = NULL;
+    cmd->execpath = strdup(cmd->arguments[0]);
+
+    return cmd;
+}
+
+void free_command(command_t *cmd) {
+    for (int i = 0; i < cmd->arg_count; i++) {
+        free(cmd->arguments[i]);
+    }
+    free(cmd->arguments);
+    if (cmd->execpath) free(cmd->execpath);
+    if (cmd->inputfile) free(cmd->inputfile);
+    if (cmd->outputfile) free(cmd->outputfile);
+    free(cmd);
+}
+
+void execute_command(command_t *cmd) {
+    if (cmd->execpath == NULL) {
         return; // Empty command
     }
 
     // Built-in command: cd
-    if (strcmp(args[0], "cd") == 0) {
-        change_directory(args);
+    if (strcmp(cmd->execpath, "cd") == 0) {
+        change_directory(cmd->arguments);
         return;
     }
 
     // Built-in command: pwd
-    if (strcmp(args[0], "pwd") == 0) {
+    if (strcmp(cmd->execpath, "pwd") == 0) {
         print_working_directory();
         return;
     }
@@ -175,7 +214,25 @@ void execute_command(char *cmd) {
         exit(EXIT_FAILURE);
     } else if (pid == 0) {
         // Child process
-        execvp(args[0], args);
+        if (cmd->inputfile) {
+            int fd_in = open(cmd->inputfile, O_RDONLY);
+            if (fd_in < 0) {
+                perror("open input file");
+                exit(EXIT_FAILURE);
+            }
+            dup2(fd_in, STDIN_FILENO);
+            close(fd_in);
+        }
+        if (cmd->outputfile) {
+            int fd_out = open(cmd->outputfile, O_WRONLY | O_CREAT | O_TRUNC, 0640);
+            if (fd_out < 0) {
+                perror("open output file");
+                exit(EXIT_FAILURE);
+            }
+            dup2(fd_out, STDOUT_FILENO);
+            close(fd_out);
+        }
+        execvp(cmd->execpath, cmd->arguments);
         perror("execvp");
         exit(EXIT_FAILURE);
     } else {
