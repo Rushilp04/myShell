@@ -1,1 +1,72 @@
 Rushil Patel - rp1224
+Romal Desai - rsd101
+
+
+Overview
+mysh is a custom shell built in C for basic command execution, including support for built-in commands, redirection, and pipelines, with both interactive and batch mode.
+
+Features
+Built-in Commands: cd, pwd, which
+External Commands: Executes commands from /bin, /usr/bin, /usr/local/bin.
+Input/Output Redirection: Supports < and > for file redirection.
+Pipelines: Chains commands using |.
+Error Handling: Displays appropriate messages for invalid commands and syntax errors.
+Design Notes
+Executable Search: Commands are only searched in /bin, /usr/bin, and /usr/local/bin for controlled execution.
+Built-in Command Handling: Commands like cd and pwd are implemented internally, reducing overhead.
+Testing Strategy
+The shell was thoroughly tested for core functionality, error handling, and edge cases to ensure robustness and stability. The main scenarios tested include:
+
+Test Scenarios
+Basic Command Execution
+
+Commands Tested: ls, echo Hello, /bin/ls
+Outcome: Commands executed correctly with the expected output.
+Built-in Commands
+
+cd: Tested with valid, invalid, absolute, and relative paths.
+pwd: Verified correct working directory after cd.
+which: Verified correct executable path.
+Outcome: All commands executed as expected or displayed meaningful errors.
+Redirection
+
+Output Redirection: echo Hello > output.txt wrote to file.
+Input Redirection: cat < output.txt read from file.
+Outcome: Redirection worked with correct file content.
+Pipelines
+
+Commands Tested: ls | grep .c, cat input.txt | sort | uniq
+Outcome: Successfully piped data between commands.
+Error Handling
+
+Invalid Command: invalidcommand returned "Command not found".
+Incorrect Syntax: ls > displayed "Syntax error".
+Outcome: Error messages were correctly displayed for invalid cases.
+Custom Executable Search
+
+Verified commands like grep were correctly found in /bin, /usr/bin, or /usr/local/bin.
+Outcome: Executed successfully or displayed "Command not found".
+Edge Cases
+
+Empty Input: Pressed Enter resulted in re-prompting without errors.
+Whitespace Handling: Commands with leading/trailing spaces executed correctly.
+Special Characters: Commands with quotes or $ worked properly.
+Automated Testing
+A script (test_script.sh) was created to automate basic command testing.
+Tools Used:
+Valgrind and Address Sanitizer were employed to detect memory issues. No leaks or errors found.
+Example Automated Test Script (test_script.sh)
+sh
+Copy code
+#!/bin/bash
+./mysh -c "ls"
+./mysh -c "pwd"
+./mysh -c "cd / && pwd"
+./mysh -c "echo Hello > test_output.txt"
+./mysh -c "cat < test_output.txt"
+./mysh -c "ls | grep .c"
+./mysh -c "invalidcommand"
+./mysh -c "ls >"
+./mysh -c "which ls"
+Conclusion
+mysh was comprehensively tested for functionality, correctness, and reliability. Testing included both manual and automated scenarios covering built-in commands, redirection, pipelines, and error cases, providing a robust and stable custom shell environment.
