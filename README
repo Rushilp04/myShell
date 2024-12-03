@@ -2,10 +2,19 @@ Rushil Patel - rp1224
 Romal Desai - rsd101
 
 
-Overview
+Overview:
 mysh is a custom shell built in C for basic command execution, including support for built-in commands, redirection, and pipelines, with both interactive and batch mode.
 
-Features
+Design notes:
+make all and/ or make compile should make the executable to run and test.
+The shell uses tokenization to split the input into words based on spaces, handling commands, arguments, redirection, and piping.
+Built-in Commands (cd, pwd, which) are executed internally, without launching new processes, to ensure efficient handling.
+For external commands, the shell either uses the command path directly if provided or searches in specific directories to control executable access.
+Input (<) and output (>) redirection are implemented by modifying file descriptors using dup2().
+Proper closing of file descriptors ensures that no file handle leaks occur and that processes do not inadvertently interfere with each other.
+
+
+Features:
 Built-in Commands: cd, pwd, which
 External Commands: Executes commands from /bin, /usr/bin, /usr/local/bin.
 Input/Output Redirection: Supports < and > for file redirection.
@@ -20,10 +29,7 @@ The shell was thoroughly tested for core functionality, error handling, and edge
 Test Scenarios
 Basic Command Execution
 
-Commands Tested: ls, echo Hello, /bin/ls
-Outcome: Commands executed correctly with the expected output.
-Built-in Commands
-
+Commands Tested: 
 cd: Tested with valid, invalid, absolute, and relative paths.
 pwd: Verified correct working directory after cd.
 which: Verified correct executable path.
@@ -51,22 +57,6 @@ Edge Cases
 Empty Input: Pressed Enter resulted in re-prompting without errors.
 Whitespace Handling: Commands with leading/trailing spaces executed correctly.
 Special Characters: Commands with quotes or $ worked properly.
-Automated Testing
-A script (test_script.sh) was created to automate basic command testing.
-Tools Used:
-Valgrind and Address Sanitizer were employed to detect memory issues. No leaks or errors found.
-Example Automated Test Script (test_script.sh)
-sh
-Copy code
-#!/bin/bash
-./mysh -c "ls"
-./mysh -c "pwd"
-./mysh -c "cd / && pwd"
-./mysh -c "echo Hello > test_output.txt"
-./mysh -c "cat < test_output.txt"
-./mysh -c "ls | grep .c"
-./mysh -c "invalidcommand"
-./mysh -c "ls >"
-./mysh -c "which ls"
-Conclusion
-mysh was comprehensively tested for functionality, correctness, and reliability. Testing included both manual and automated scenarios covering built-in commands, redirection, pipelines, and error cases, providing a robust and stable custom shell environment.
+
+
+These tests the code very extesively and it seems to work for them.
