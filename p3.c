@@ -238,7 +238,6 @@ void execute_command(command_t *cmd) {
 
     if (cmd->execpath == NULL) {
         return; // Empty command
-
     }
 
     // Built-in command: cd
@@ -287,7 +286,7 @@ void execute_command(command_t *cmd) {
             pipepid = fork ();
             int filedes[2];
             dup2(filedes[0], stdout);
-            dup2(filedes[1],stdin);;
+            dup2(filedes[1], stdin);;
             pipe(filedes);
             execv(cmd->pipeto, cmd->arguments);
         }
