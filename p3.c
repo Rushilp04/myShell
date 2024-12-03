@@ -163,73 +163,46 @@ void free_tokens(char **tokens, int token_count) {
 }
 
 
-command_t *parse_command(char **tokens, int token_count) {
-
+command_t *parse_command(char **tokens, int token_count){
     command_t *cmd = malloc(sizeof(command_t));
 
 
     if (!cmd) {
-
         perror("malloc");
-
         exit(EXIT_FAILURE);
-
     }
 
-
     cmd->arguments = malloc(MAX_ARGS * sizeof(char *));
-
     cmd->execpath = NULL;
-
     cmd->inputfile = NULL;
-
     cmd->outputfile = NULL;
-
     cmd->pipeto = NULL;
-
     cmd->arg_count = 0;
 
 
     int i = 0;
 
-    while (i < token_count) 
-
-    {
-
+    while (i < token_count) {
         if (strcmp(tokens[i], "<") == 0) {
-
             if (i + 1 < token_count) {
-
                 cmd->inputfile = strdup(tokens[i + 1]);
-
                 i += 2;
 
             } else {
-
                 fprintf(stderr, "Syntax error: expected file after '<'\n");
-
                 free_command(cmd);
-
                 return NULL;
 
             }
-
         } else if (strcmp(tokens[i], ">") == 0) {
-
             if (i + 1 < token_count) {
-
                 cmd->outputfile = strdup(tokens[i + 1]);
-
                 i += 2;
 
             } else {
-
                 fprintf(stderr, "Syntax error: expected file after '>'\n");
-
                 free_command(cmd);
-
                 return NULL;
-
             }
 
         } 
@@ -265,6 +238,7 @@ command_t *parse_command(char **tokens, int token_count) {
     cmd->execpath = strdup(cmd->arguments[0]);
 
     return cmd;
+}
 }
 
 void free_command(command_t *cmd) {
