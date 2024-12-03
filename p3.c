@@ -37,6 +37,7 @@ void free_tokens(char **tokens, int token_count);
 command_t *parse_command(char **tokens, int start, int end);
 command_t **parse_pipeline(char **tokens, int token_count, int *command_count);
 void free_command(command_t *cmd);
+char *find_executable(char *cmd_name);
 
 int main(int argc, char *argv[]) {
     char cmd[MAX_CMD_LEN];
@@ -186,7 +187,17 @@ command_t *parse_command(char **tokens, int start, int end) {
 
     cmd->arguments[cmd->arg_count] = NULL;
     if (cmd->arg_count > 0) {
-        cmd->execpath = strdup(cmd->arguments[0]);
+        if (tokens[start][0] == '/') {
+            cmd->execpath = strdup(tokens[start]);
+        } else {
+            // Search for executable in predefined paths
+            cmd->execpath = find_executable(tokens[start]);
+            if (!cmd->execpath) {
+                fprintf(stderr, "Command not found: %s\n", tokens[start]);
+                free_command(cmd);
+                return NULL;
+            }
+        }
     }
 
     return cmd;
@@ -285,8 +296,8 @@ void execute_pipeline(command_t **commands, int command_count) {
                 dup2(fd_out, STDOUT_FILENO);
                 close(fd_out);
             }
-            execvp(commands[i]->execpath, commands[i]->arguments);
-            perror("execvp");
+            execv(commands[i]->execpath, commands[i]->arguments);
+            perror("execv");
             exit(EXIT_FAILURE);
         }
     }
@@ -349,8 +360,8 @@ void execute_command(command_t *cmd) {
             dup2(fd_out, STDOUT_FILENO);
             close(fd_out);
         }
-        execvp(cmd->execpath, cmd->arguments);
-        perror("execvp");
+        execv(cmd->execpath, cmd->arguments);
+        perror("execv");
         exit(EXIT_FAILURE);
     } else {
         // Parent process
@@ -404,4 +415,20 @@ void print_which(char **args) {
             free(fullpathtosearch);
         }
     }
+}
+
+char *find_executable(char *cmd_name) {
+    // Custom search for executable in 3 specific folders
+    char *paths[] = {"/bin", "/usr/bin", "/usr/local/bin"};
+    char *fullpath = malloc(256);
+
+    for (int i = 0; i < 3; i++) {
+        snprintf(fullpath, 256, "%s/%s", paths[i], cmd_name);
+        if (access(fullpath, X_OK) == 0) {
+            return fullpath;
+        }
+    }
+
+    free(fullpath);
+    return NULL;
 }
