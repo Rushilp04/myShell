@@ -97,23 +97,17 @@ int main(int argc, char *argv[]) {
             execute_command(parsed_command);
             free_command(parsed_command);
         }
-
         free_tokens(tokens, token_count);
 
     }
 
-
     if (argc == 2) {
-
         fclose(input);
-
     }
-
 
     return 0;
 
 }
-
 
 char **tokenize_input(char *input, int *token_count) {
 
@@ -127,23 +121,16 @@ char **tokenize_input(char *input, int *token_count) {
 
     }
 
-
     int count = 0;
-
     char *token = strtok(input, " \t\n");
 
     while (token != NULL && count < MAX_TOKENS) {
-
         tokens[count++] = strdup(token);
-
         token = strtok(NULL, " \t\n");
-
     }
 
     tokens[count] = NULL;
-
     *token_count = count;
-
 
     return tokens;
 
@@ -151,15 +138,10 @@ char **tokenize_input(char *input, int *token_count) {
 
 
 void free_tokens(char **tokens, int token_count) {
-
     for (int i = 0; i < token_count; i++) {
-
         free(tokens[i]);
-
     }
-
     free(tokens);
-
 }
 
 
