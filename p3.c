@@ -235,194 +235,105 @@ command_t *parse_command(char **tokens, int token_count) {
         } 
 
         else if (strcmp(tokens[i], "|") == 0) {
-
             if (i + 1 < token_count) {
-
                 cmd->pipeto = strdup(tokens[i + 1]);
-
                 i += 2;
-
 
         }
 
         else {
-
             // Handle wildcard expansion
-
             glob_t globbuf;
-
             if (strchr(tokens[i], '*')) {
-
                 if (glob(tokens[i], 0, NULL, &globbuf) == 0) {
-
                     for (size_t j = 0; j < globbuf.gl_pathc; j++) {
-
                         cmd->arguments[cmd->arg_count++] = strdup(globbuf.gl_pathv[j]);
-
                     }
-
                 } else {
-
                     cmd->arguments[cmd->arg_count++] = strdup(tokens[i]);
-
                 }
-
                 globfree(&globbuf);
-
             } else {
-
                 cmd->arguments[cmd->arg_count++] = strdup(tokens[i]);
-
             }
-
             i++;
-
         }
 
     }
 
-
     cmd->arguments[cmd->arg_count] = NULL;
-
     cmd->execpath = strdup(cmd->arguments[0]);
 
-
     return cmd;
-
 }
-
 
 void free_command(command_t *cmd) {
-
     for (int i = 0; i < cmd->arg_count; i++) {
-
         free(cmd->arguments[i]);
-
     }
-
     free(cmd->arguments);
-
     if (cmd->execpath) free(cmd->execpath);
-
     if (cmd->inputfile) free(cmd->inputfile);
-
     if (cmd->outputfile) free(cmd->outputfile);
-
     free(cmd);
-
 }
-
 
 void execute_command(command_t *cmd) {
 
     if (cmd->execpath == NULL) {
-
         return; // Empty command
 
     }
 
-
-    
-
     // Built-in command: cd
-
     if (strcmp(cmd->execpath, "cd") == 0) {
-
         change_directory(cmd->arguments);
-
         return;
-
     }
-
 
     // Built-in command: pwd
-
     else if (strcmp(cmd->execpath, "pwd") == 0) {
-
         print_working_directory();
-
         return;
-
     }
-
     else if (strcmp(cmd->execpath, "which") == 0) {
-
         print_which(cmd->arguments);
-
         return;
-
     }
-
-
     // Fork a child process to execute other commands
-
     pid_t pid = fork();
-
     pid_t pipepid = -1;
-
     if (pid < 0) {
-
         perror("fork");
-
         exit(EXIT_FAILURE);
-
     } else if (pid == 0) {
-
         // Child process
-
         if (cmd->inputfile) {
-
             int fd_in = open(cmd->inputfile, O_RDONLY);
-
             if (fd_in < 0) {
-
                 perror("open input file");
-
                 exit(EXIT_FAILURE);
-
             }
-
             dup2(fd_in, STDIN_FILENO);
-
             close(fd_in);
-
         }
-
         if (cmd->outputfile) {
-
             int fd_out = open(cmd->outputfile, O_WRONLY | O_CREAT | O_TRUNC, 0640);
-
             if (fd_out < 0) {
-
                 perror("open output file");
-
                 exit(EXIT_FAILURE);
-
             }
-
             dup2(fd_out, STDOUT_FILENO);
-
             close(fd_out);
-
         }
 
-        if (cmd->pipeto)
-
-        {
-
+        if (cmd->pipeto){
             pipepid = fork ();
-
             int filedes[2];
-
             dup2(filedes[0], stdout);
-
             dup2(filedes[1],stdin);;
-
             pipe(filedes);
-
             execv(cmd->pipeto, cmd->arguments);
-
-
         }
 
         execv(cmd->execpath, cmd->arguments);
@@ -432,121 +343,63 @@ void execute_command(command_t *cmd) {
         exit(EXIT_FAILURE);
 
     } else {
-
         // Parent process
-
         int status;
-
         int pipestatus;
-
         waitpid(pid, &status, 0);
 
         if (pipepid != -1)
-
         waitpid(pipepid, &pipestatus, 0);
 
-
-
         if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-
             printf("Command failed with code %d\n", WEXITSTATUS(status));
-
         } else if (WIFSIGNALED(status)) {
-
             printf("Terminated by signal: %d\n", WTERMSIG(status));
-
         }
-
-
         if (WIFEXITED(pipestatus) && WEXITSTATUS(pipestatus) != 0) {
-
             printf("pipe to Command failed with code %d\n", WEXITSTATUS(pipestatus));
-
         } else if (WIFSIGNALED(pipestatus)) {
-
             printf("pipe to command Terminated by signal: %d\n", WTERMSIG(pipestatus));
-
         }
-
     }
-
 }
-
 
 void change_directory(char **args) {
-
     if (args[1] == NULL) {
-
         fprintf(stderr, "cd: missing argument\n");
-
     } else if (chdir(args[1]) != 0) {
-
         perror("cd");
-
     }
-
 }
-
 
 void print_working_directory() {
-
     char cwd[1024];
-
     if (getcwd(cwd, sizeof(cwd)) != NULL) {
-
         printf("%s\n", cwd);
-
     } else {
-
         perror("getcwd");
-
     }
-
 }
 
-
-void print_which(char **args) 
-
-{
-
+void print_which(char **args){
     if (args[1] == NULL) {
-
         fprintf(stderr, "which: missing argument\n");
-
         return;
-
     }
-
     char* envp = getenv("PATH");
 
-    if (envp)
-
-    {
-
+    if (envp){
         char* allpaths = strtok (envp, ":");
-
-
         while (allpaths != NULL)
 
         { 
-
             int len = strlen (args[0]) + strlen (allpaths) + 2;
-
             char* fullpathtosearch = (char*) malloc (sizeof (char) * len);
-
             sprintf (fullpathtosearch, "%s%s%s", (char*) allpaths, "/", args[1]);
-
-            if (access(fullpathtosearch, F_OK) == 0) 
-
-            {
-
+            if (access(fullpathtosearch, F_OK) == 0){
                 printf ("%s\n", fullpathtosearch);
-
                 fflush (stdout);
-
-            } 
-
-            
+            }
 
             allpaths=strtok (NULL, ":");
 
