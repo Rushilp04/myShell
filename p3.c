@@ -190,7 +190,6 @@ command_t *parse_command(char **tokens, int start, int end) {
         if (tokens[start][0] == '/') {
             cmd->execpath = strdup(tokens[start]);
         } else {
-            // Search for executable in predefined paths
             cmd->execpath = find_executable(tokens[start]);
             if (!cmd->execpath) {
                 fprintf(stderr, "Command not found: %s\n", tokens[start]);
@@ -379,8 +378,14 @@ void execute_command(command_t *cmd) {
 void change_directory(char **args) {
     if (args[1] == NULL) {
         fprintf(stderr, "cd: missing argument\n");
-    } else if (chdir(args[1]) != 0) {
-        perror("cd");
+    } else if (strcmp(args[1], "..") == 0) {
+        if (chdir(args[1]) != 0) {
+            perror("cd");
+        }
+    } else {
+        if (chdir(args[1]) != 0) {
+            perror("cd");
+        }
     }
 }
 
