@@ -8,7 +8,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <glob.h>
-
+#include <unistd.h>
 
 #define MAX_CMD_LEN 1024
 #define MAX_ARGS 100
